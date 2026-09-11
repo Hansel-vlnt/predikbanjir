@@ -1,14 +1,11 @@
 // ============================================
 // KONFIGURASI
 // ============================================
-// Otomatis deteksi: jika di cloud/hosting atau port 5000 gunakan relative '/api',
-// jika file:// atau live-server port lain fallback ke http://localhost:5000/api
-const API_URL = (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '5000'))
+const API_URL = (window.location.protocol === 'file:')
     ? 'http://localhost:5000/api'
-    : '/api';
+    : (window.location.origin ? window.location.origin + '/api' : '/api');
 let chart = null;
 let refreshInterval = null;
-
 
 // ============================================
 // FUNGSI KATEGORI
@@ -148,6 +145,7 @@ function updateSensorValues(data) {
 async function fetchLatest() {
     try {
         const response = await fetch(`${API_URL}/latest`);
+        if (!response.ok) return;
         const data = await response.json();
         console.log("Data terbaru:", data);
         updateStatusCard(data);
@@ -165,6 +163,7 @@ async function fetchLatest() {
 async function updateStats() {
     try {
         const response = await fetch(`${API_URL}/summary`);
+        if (!response.ok) return;
         const stats = await response.json();
         
         document.getElementById('totalData').innerHTML = stats.total_data || 0;
@@ -188,6 +187,10 @@ async function updateHistory() {
     const tbody = document.getElementById('historyBody');
     try {
         const response = await fetch(`${API_URL}/history?limit=20`);
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`HTTP ${response.status} (${errBody.slice(0, 60)})`);
+        }
         const data = await response.json();
         
         if (data && data.error) {
@@ -234,9 +237,10 @@ async function updateHistory() {
         updateChart(chartData.reverse());
     } catch (error) {
         console.error('Error fetching history:', error);
-        tbody.innerHTML = '<tr><td colspan="6" class="loading" style="color: #e74c3c;">Gagal menghubungi server API</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6" class="loading" style="color: #e74c3c;">⚠️ Gagal menghubungi server API: ${error.message}<br><small>Target: ${API_URL}/history</small></td></tr>`;
     }
 }
+
 
 
 // ============================================
@@ -356,6 +360,10 @@ async function updateRekapHarian() {
     const tbody = document.getElementById('rekapBody');
     try {
         const response = await fetch(`${API_URL}/history?limit=1000`);
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`HTTP ${response.status} (${errBody.slice(0, 60)})`);
+        }
         const data = await response.json();
         
         if (data && data.error) {
@@ -421,7 +429,7 @@ async function updateRekapHarian() {
         
     } catch (error) {
         console.error('Error fetching rekap:', error);
-        tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color: #e74c3c;">Gagal memuat rekap harian</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="5" class="loading" style="color: #e74c3c;">⚠️ Gagal memuat rekap harian: ${error.message}</td></tr>`;
     }
 }
 
