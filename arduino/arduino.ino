@@ -8,8 +8,8 @@
 const char* ssid = "NAMA_WIFI_ANDA";
 const char* password = "PASSWORD_WIFI_ANDA";
 
-// URL Endpoint Backend Vercel Anda (Sudah Aktif & Terhubung ke Supabase):
-const char* serverUrl = "https://predikbanjir.vercel.app/api/sensor";
+// URL Endpoint Backend Cloud Domain Anda (Aktif & Terhubung ke Supabase):
+const char* serverUrl = "https://www.prediksibanjir.my.id/api/sensor";
 
 // ============ MODE ============
 #define MODE_TESTING true  // true = 1 menit tanpa tip (reset), false = 1 jam (produksi)
@@ -237,8 +237,10 @@ void kirimKeServer(long int tip) {
     
     // ============================================
     // RUMUS: Intensitas = Curah / (Durasi / 60) mm/jam
+    // Beri batas minimal durasi 0.5 menit (30 detik) saat awal hujan agar nilai realistis
     // ============================================
-    float intensitas = (durasi > 0) ? (curah / (durasi / 60.0)) : 0;
+    float durasiHitung = (durasi < 0.5) ? 0.5 : durasi;
+    float intensitas = (durasiHitung > 0) ? (curah / (durasiHitung / 60.0)) : 0;
     
     String payload = "{";
     payload += "\"curah_hujan\":" + String(curah, 2) + ",";

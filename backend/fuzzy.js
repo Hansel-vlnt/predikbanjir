@@ -69,6 +69,22 @@ function intensitasTinggi(x) {
 
 // INFERENSI FUZZY
 function inferensiFuzzy(curah, durasi, intensitas) {
+    // Jika tidak ada curah hujan, otomatis kondisi TIDAK HUJAN (Skor 0)
+    if (curah <= 0) {
+        return {
+            nilai: 0,
+            status: 'TIDAK HUJAN',
+            detail: {
+                alpha: { aman: 0, waspada: 0, bahaya: 0 },
+                fuzzy: {
+                    curah: { rendah: 1, sedang: 0, tinggi: 0 },
+                    durasi: { singkat: 1, sedang: 0, tinggi: 0 },
+                    intensitas: { rendah: 1, sedang: 0, tinggi: 0 }
+                }
+            }
+        };
+    }
+
     // Fuzzifikasi
     let ch_rendah = curahHujanRendah(curah);
     let ch_sedang = curahHujanSedang(curah);
@@ -85,53 +101,74 @@ function inferensiFuzzy(curah, durasi, intensitas) {
     // Rules
     let rules = { aman: [], waspada: [], bahaya: [] };
 
-    // R1: Rendah + Singkat + Rendah → AMAN
-    rules.aman.push(Math.min(ch_rendah, dur_singkat, int_rendah));
-    
-    // R2: Rendah + Singkat + Sedang → AMAN
-    rules.aman.push(Math.min(ch_rendah, dur_singkat, int_sedang));
-    
-    // R3: Rendah + Sedang + Rendah → WASPADA
-    rules.waspada.push(Math.min(ch_rendah, dur_sedang, int_rendah));
-    
-    // R4: Sedang + Sedang + Sedang → WASPADA
-    rules.waspada.push(Math.min(ch_sedang, dur_sedang, int_sedang));
-    
-    // R5: Tinggi + Lama + Tinggi → BAHAYA
-    rules.bahaya.push(Math.min(ch_tinggi, dur_lama, int_tinggi));
-    
-    // R6: Sedang + Lama + Tinggi → BAHAYA
-    rules.bahaya.push(Math.min(ch_sedang, dur_lama, int_tinggi));
-    
-    // R7: Tinggi + Lama + Sedang → BAHAYA
-    rules.bahaya.push(Math.min(ch_tinggi, dur_lama, int_sedang));
-    
-    // R8: Sedang + Singkat + Rendah → AMAN
-    rules.aman.push(Math.min(ch_sedang, dur_singkat, int_rendah));
-    
-    // R9: Tinggi + Sedang + Sedang → WASPADA
-    rules.waspada.push(Math.min(ch_tinggi, dur_sedang, int_sedang));
+    // ========================================================
+    // 27 MATRIKS ATURAN LOGIKA FUZZY MAMDANI (LENGKAP)
+    // Curah (3) x Durasi (3) x Intensitas (3) = 27 Rules
+    // ========================================================
 
-    // Nilai maksimum tiap output
+    // KELOMPOK 1: CURAH HUJAN RENDAH
+    // 1. Rendah + Singkat
+    rules.aman.push(Math.min(ch_rendah, dur_singkat, int_rendah));      // R1: AMAN
+    rules.aman.push(Math.min(ch_rendah, dur_singkat, int_sedang));      // R2: AMAN
+    rules.waspada.push(Math.min(ch_rendah, dur_singkat, int_tinggi));   // R3: WASPADA
+    // 2. Rendah + Sedang
+    rules.aman.push(Math.min(ch_rendah, dur_sedang, int_rendah));       // R4: AMAN
+    rules.waspada.push(Math.min(ch_rendah, dur_sedang, int_sedang));    // R5: WASPADA
+    rules.waspada.push(Math.min(ch_rendah, dur_sedang, int_tinggi));    // R6: WASPADA
+    // 3. Rendah + Lama
+    rules.waspada.push(Math.min(ch_rendah, dur_lama, int_rendah));      // R7: WASPADA
+    rules.waspada.push(Math.min(ch_rendah, dur_lama, int_sedang));      // R8: WASPADA
+    rules.bahaya.push(Math.min(ch_rendah, dur_lama, int_tinggi));       // R9: BAHAYA
+
+    // KELOMPOK 2: CURAH HUJAN SEDANG
+    // 4. Sedang + Singkat
+    rules.aman.push(Math.min(ch_sedang, dur_singkat, int_rendah));      // R10: AMAN
+    rules.waspada.push(Math.min(ch_sedang, dur_singkat, int_sedang));   // R11: WASPADA
+    rules.waspada.push(Math.min(ch_sedang, dur_singkat, int_tinggi));   // R12: WASPADA
+    // 5. Sedang + Sedang
+    rules.waspada.push(Math.min(ch_sedang, dur_sedang, int_rendah));    // R13: WASPADA
+    rules.waspada.push(Math.min(ch_sedang, dur_sedang, int_sedang));    // R14: WASPADA
+    rules.bahaya.push(Math.min(ch_sedang, dur_sedang, int_tinggi));     // R15: BAHAYA
+    // 6. Sedang + Lama
+    rules.waspada.push(Math.min(ch_sedang, dur_lama, int_rendah));      // R16: WASPADA
+    rules.bahaya.push(Math.min(ch_sedang, dur_lama, int_sedang));       // R17: BAHAYA
+    rules.bahaya.push(Math.min(ch_sedang, dur_lama, int_tinggi));       // R18: BAHAYA
+
+    // KELOMPOK 3: CURAH HUJAN TINGGI
+    // 7. Tinggi + Singkat
+    rules.waspada.push(Math.min(ch_tinggi, dur_singkat, int_rendah));   // R19: WASPADA
+    rules.waspada.push(Math.min(ch_tinggi, dur_singkat, int_sedang));   // R20: WASPADA
+    rules.bahaya.push(Math.min(ch_tinggi, dur_singkat, int_tinggi));    // R21: BAHAYA
+    // 8. Tinggi + Sedang
+    rules.waspada.push(Math.min(ch_tinggi, dur_sedang, int_rendah));    // R22: WASPADA
+    rules.bahaya.push(Math.min(ch_tinggi, dur_sedang, int_sedang));     // R23: BAHAYA
+    rules.bahaya.push(Math.min(ch_tinggi, dur_sedang, int_tinggi));     // R24: BAHAYA
+    // 9. Tinggi + Lama
+    rules.bahaya.push(Math.min(ch_tinggi, dur_lama, int_rendah));       // R25: BAHAYA
+    rules.bahaya.push(Math.min(ch_tinggi, dur_lama, int_sedang));       // R26: BAHAYA
+    rules.bahaya.push(Math.min(ch_tinggi, dur_lama, int_tinggi));       // R27: BAHAYA
+
+    // Nilai maksimum tiap output (Agregasi Max)
     let alpha_aman = Math.max(...rules.aman);
     let alpha_waspada = Math.max(...rules.waspada);
     let alpha_bahaya = Math.max(...rules.bahaya);
 
-    // Defuzzifikasi
+    // Defuzzifikasi Sugeno / Weighted Average Center of Gravity
     let z1 = 30, z2 = 55, z3 = 85;
     let pembilang = (alpha_aman * z1) + (alpha_waspada * z2) + (alpha_bahaya * z3);
     let penyebut = alpha_aman + alpha_waspada + alpha_bahaya;
     
-    let hasilDefuzzifikasi = penyebut === 0 ? 0 : pembilang / penyebut;
+    let hasilDefuzzifikasi = penyebut === 0 ? 30 : pembilang / penyebut;
+    let skorBulat = Math.round(hasilDefuzzifikasi);
     
-    // Status
+    // Status Berdasarkan Skor
     let status = '';
-    if (hasilDefuzzifikasi <= 40) status = 'AMAN';
-    else if (hasilDefuzzifikasi >= 60) status = 'BAHAYA';
+    if (skorBulat <= 40) status = 'AMAN';
+    else if (skorBulat >= 60) status = 'BAHAYA';
     else status = 'WASPADA';
 
     return {
-        nilai: Math.round(hasilDefuzzifikasi),
+        nilai: skorBulat,
         status: status,
         detail: {
             alpha: { aman: alpha_aman, waspada: alpha_waspada, bahaya: alpha_bahaya },
