@@ -1,6 +1,6 @@
 # 🌊 Sistem Monitoring & Prediksi Potensi Banjir (IoT & Fuzzy Logic)
 
-Proyek sistem peringatan dini dan pemantauan potensi banjir berbasis **Internet of Things (IoT)** menggunakan mikrokontroler **ESP32**, sensor curah hujan tipe *tipping bucket*, algoritma **Logika Fuzzy (Fuzzy Inference System)**, backend **Node.js (Express)**, database **MySQL**, dan antarmuka web responsif **Real-time Dashboard**.
+Proyek sistem peringatan dini dan pemantauan potensi banjir berbasis **Internet of Things (IoT)** menggunakan mikrokontroler **ESP32**, sensor curah hujan tipe *tipping bucket*, algoritma **Logika Fuzzy (Fuzzy Inference System)**, backend **Node.js (Express)**, database **Supabase (PostgreSQL)** atau **MySQL**, dan antarmuka web responsif **Real-time Dashboard**.
 
 ---
 
@@ -13,8 +13,9 @@ Proyek sistem peringatan dini dan pemantauan potensi banjir berbasis **Internet 
   3. Intensitas Hujan ($mm/jam$)
 - **Grafik Tren 24 Jam**: Visualisasi pergerakan tren potensi banjir menggunakan Chart.js.
 - **Tabel Rekap Harian & Riwayat Sensor**: Riwayat lengkap pencatatan data dan rekapitulasi harian kejadian hujan.
-- **Cloud & Vercel Ready**: Dukungan penuh deployment di **Vercel** (Serverless Functions + Vercel Global Edge CDN) maupun platform PaaS konvensional seperti **Render**, **Railway**, atau VPS.
-- **Dukungan HTTPS IoT**: Firmware ESP32 dilengkapi dukungan koneksi SSL/HTTPS aman untuk pengiriman data ke server cloud.
+- **Dual-Database Support**: Backend cerdas yang mendukung **Supabase (PostgreSQL Cloud)** secara native untuk Vercel, dan tetap mendukung **MySQL** untuk pengujian lokal.
+- **Cloud & Vercel Ready**: Dukungan penuh deployment di **Vercel** (Serverless Functions + Vercel Global Edge CDN).
+- **Dukungan HTTPS IoT**: Firmware ESP32 dilengkapi pustaka SSL aman untuk pengiriman data via HTTPS ke domain cloud Vercel.
 
 ---
 
@@ -28,14 +29,15 @@ Proyek sistem peringatan dini dan pemantauan potensi banjir berbasis **Internet 
            │ (HTTP/HTTPS POST /api/sensor)
            ▼
   [ Node.js Express API ] ───► [ Inferensi Logika Fuzzy ]
-  (Serverless / Standalone)                   │
+  (Serverless di Vercel)                      │
            │                                  ▼
-           ▼ (Query/Insert)                   │
-     [ Database Cloud MySQL ] ◄───────────────┘
+           ▼ (Supabase JS SDK / SQL)          │
+  [ Database Cloud Supabase ] ◄───────────────┘
+  (PostgreSQL & Realtime Storage)
            ▲
-           │ (Polling / Fetch API)
+           │ (Fetch API Polling)
            ▼
-[ Web Dashboard UI (Vercel CDN Edge / Express Static) ]
+[ Web Dashboard UI (Vercel Edge Global CDN) ]
 ```
 
 ---
@@ -56,15 +58,17 @@ prediksibanjir/
 │   └── arduino.ino          # Kode firmware untuk ESP32 (WiFi & HTTP Client)
 ├── backend/
 │   ├── controllers/
-│   │   └── sensorController.js # Controller logika penerimaan data & API
+│   │   └── sensorController.js # Controller cerdas (Dual-mode: Supabase & MySQL)
 │   ├── routes/
 │   │   └── api.js              # Routing endpoint RESTful API
-│   ├── .env.example            # Template variabel konfigurasi database & port
-│   ├── db.js                   # Modul koneksi pool MySQL dengan dukungan SSL & Serverless
+│   ├── .env.example            # Template konfigurasi Supabase & MySQL
+│   ├── supabase.js             # Modul inisialisasi Supabase JS Client
+│   ├── db.js                   # Modul koneksi pool MySQL lokal/cloud
 │   ├── fuzzy.js                # Algoritma inferensi logika fuzzy
 │   ├── package.json            # Dependensi backend
 │   └── server.js               # Entry point Express server & static web server
-├── banjir_prediksi.sql         # Skema database MySQL & view v_rekap_harian
+├── supabase_setup.sql          # Skrip database PostgreSQL untuk Supabase
+├── banjir_prediksi.sql         # Skema database MySQL
 ├── vercel.json                 # Konfigurasi routing serverless Vercel
 ├── package.json                # Root package untuk instalasi dependensi Vercel & PaaS
 ├── Procfile                    # File konfigurasi proses cloud (Railway / Heroku)
@@ -74,81 +78,85 @@ prediksibanjir/
 
 ---
 
-## ⚡ Panduan Hosting di Vercel (Langkah demi Langkah)
+## ⚡ Panduan Lengkap Hosting di Vercel + Supabase (Paling Mudah)
 
-Hosting di Vercel adalah cara paling cepat, gratis, dan performa tinggi (didukung Global Edge CDN).
+Kombinasi **Vercel** dan **Supabase** adalah standar industri gratis terbaik untuk aplikasi web modern.
 
-### Tahap 1: Setup Database MySQL Online (Wajib)
-> ⚠️ **PENTING**: Vercel berjalan di cloud serverless (AWS Lambda) dan **TIDAK BISA mengakses `localhost`**. Anda wajib memiliki satu database MySQL online.
+### Tahap 1: Setup Database di Supabase (Gratis)
 
-**Pilihan Rekomendasi Database Cloud Gratis:**
-1. **[TiDB Cloud Serverless](https://tidbcloud.com/)** (Gratis 5GB selamanya, 100% kompatibel MySQL, sangat cocok untuk Vercel).
-2. **[Aiven for MySQL](https://aiven.io/)** (Free tier).
-3. **[Railway MySQL](https://railway.app/)** (Tersedia credit bulanan).
-
-**Langkah Impor Database:**
-1. Daftar akun di penyedia database cloud (misal: [TiDB Cloud](https://tidbcloud.com/)).
-2. Buat cluster/database baru bernama `banjir_prediksi`.
-3. Buka menu **SQL Editor / Console** di dashboard database cloud Anda.
-4. Salin seluruh isi berkas `banjir_prediksi.sql` dan jalankan (Execute) untuk membuat tabel dan view.
-5. Catat kredensial koneksi: **Host**, **Port**, **User**, dan **Password**.
+1. Buka **[supabase.com](https://supabase.com)** dan klik **Sign In** dengan akun GitHub Anda.
+2. Klik tombol **"New Project"**.
+3. Isi formulir:
+   - **Name**: `banjir-prediksi`
+   - **Database Password**: Buat kata sandi yang kuat dan catat.
+   - **Region**: Pilih **`Singapore (ap-southeast-1)`** *(terdekat dari Indonesia)*.
+4. Klik **Create new project** (tunggu ~1-2 menit hingga status database aktif).
+5. Di menu bilah kiri Supabase, klik ikon **SQL Editor** (ikon dokumen/terminal).
+6. Buka file [`supabase_setup.sql`](./supabase_setup.sql) dari repositori ini, salin seluruh isinya, tempel ke SQL Editor Supabase, lalu klik tombol hijau **"Run"**.
+   *(Semua tabel `tb_sensor`, `tb_config`, `tb_fuzzy_log`, dan view `v_rekap_harian` otomatis dibuat).*
+7. Di menu bilah kiri bawah, klik ikon **Project Settings** (ikon roda gigi) > pilih menu **API**.
+8. Catat 2 nilai berikut:
+   - **Project URL** (contoh: `https://abcdefghijklmnop.supabase.co`)
+   - **Project API Keys (`anon` / `public`)** (token panjang berawalan `eyJ...`)
 
 ---
 
-### Tahap 2: Hubungkan Repositori ke Vercel
+### Tahap 2: Hubungkan & Deploy ke Vercel
 
-1. Buka [Vercel Dashboard](https://vercel.com/) dan login/daftar menggunakan akun GitHub Anda.
+1. Buka **[Vercel Dashboard](https://vercel.com/new)** dan login menggunakan akun GitHub Anda.
 2. Klik tombol **"Add New..."** > **"Project"**.
 3. Cari dan pilih repositori Anda: **`Hansel-vlnt/predikbanjir`**, lalu klik **"Import"**.
-4. Di halaman konfigurasi project:
+4. Pada halaman konfigurasi:
    - **Framework Preset**: Pilih **`Other`** (atau biarkan default).
    - **Root Directory**: `./` (biarkan default).
-   - **Build & Development Settings**: Biarkan default (Vercel otomatis membaca `vercel.json` dan folder `public/`).
-5. Buka bagian **"Environment Variables"**, lalu tambahkan variabel berikut satu per satu:
+5. Buka bagian **"Environment Variables"**, lalu tambahkan 2 variabel dari Supabase tadi:
 
-| Name | Contoh Nilai | Keterangan |
+| Name (Key) | Nilai yang Dimasukkan | Keterangan |
 | :--- | :--- | :--- |
-| `DB_HOST` | `gateway01.ap-southeast-1.prod.aws.tidbcloud.com` | Host database MySQL cloud Anda |
-| `DB_PORT` | `4000` *(atau 3306)* | Port database cloud |
-| `DB_USER` | `xxxxxx.root` | Username database cloud |
-| `DB_PASSWORD` | `password_rahasia_anda` | Password database cloud |
-| `DB_NAME` | `banjir_prediksi` | Nama database |
-| `DB_SSL` | `true` | Wajib `true` untuk koneksi aman ke cloud |
+| `SUPABASE_URL` | `https://abcdefghijklmnop.supabase.co` | Project URL dari Supabase |
+| `SUPABASE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5c...` | Project API Key (`anon` / `public`) dari Supabase |
 
 6. Klik tombol **"Deploy"**.
-7. Tunggu sekitar 1 menit hingga proses build selesai. Anda akan mendapatkan URL domain aktif (contoh: `https://predikbanjir.vercel.app`).
-8. Buka URL tersebut di browser — Dashboard pemantau banjir langsung aktif dan siap digunakan!
+7. Tunggu sekitar 1 menit hingga build selesai. Vercel akan memberikan domain aktif (contoh: `https://predikbanjir.vercel.app`).
+8. Buka domain tersebut: Web Dashboard Anda langsung live, terhubung ke Supabase, dan siap digunakan!
 
 ---
 
 ## 📡 Menghubungkan Hardware ESP32 ke Domain Vercel
 
-Setelah aplikasi Anda live di Vercel:
+Setelah domain Vercel Anda aktif:
 
 1. Buka file `arduino/arduino.ino` di Arduino IDE.
-2. Masukkan SSID dan password WiFi di lapangan.
+2. Masukkan SSID dan password WiFi di lokasi pemasangan sensor.
 3. Ubah `serverUrl` ke domain Vercel Anda dengan endpoint `/api/sensor`:
    ```cpp
-   // Contoh URL Vercel Anda:
+   // Ganti dengan URL domain Vercel Anda:
    const char* serverUrl = "https://predikbanjir.vercel.app/api/sensor";
    ```
-4. Hubungkan sensor tipping bucket ke **Pin 14** ESP32.
-5. Upload program ke ESP32. Mikrokontroler akan langsung mengirim data via HTTPS ke Vercel!
+4. Hubungkan sensor tipping bucket ke **GPIO 14** dan **GND** pada ESP32.
+5. Upload program ke board ESP32.
+6. Buka **Serial Monitor** (baudrate `115200`). Setiap kali sensor berayun/mengukur hujan, data akan dikirim secara aman via HTTPS ke Vercel dan langsung tersimpan di Supabase!
 
 ---
 
-## 💻 Panduan Menjalankan Secara Lokal
+## 💻 Panduan Menjalankan Secara Lokal (Opsional - MySQL)
 
-Jika ingin menjalankan pengujian di komputer sendiri (localhost):
+Jika Anda ingin menjalankan sistem di komputer lokal tanpa internet:
 
 1. Pastikan **Node.js** dan **MySQL/XAMPP** sudah berjalan.
 2. Impor berkas `banjir_prediksi.sql` ke database MySQL lokal bernama `banjir_prediksi`.
-3. Masuk ke terminal proyek dan salin environment:
+3. Masuk ke terminal proyek:
    ```bash
    cd backend
    cp .env.example .env
    ```
-4. Edit `.env` sesuai user & password MySQL lokal Anda.
+4. Edit `.env` dengan konfigurasi MySQL lokal Anda:
+   ```env
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=
+   DB_NAME=banjir_prediksi
+   ```
 5. Instal dependensi dan jalankan server:
    ```bash
    npm install
@@ -160,18 +168,18 @@ Jika ingin menjalankan pengujian di komputer sendiri (localhost):
 
 ## 🔌 Dokumentasi REST API
 
-| Method | Endpoint | Keterangan | Contoh Body |
+| Method | Endpoint | Keterangan | Contoh Request Body |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/health` | Health check uptime server cloud | - |
-| `POST` | `/api/sensor` | Kirim data pembacaan dari ESP32 | `{"curah_hujan": 12.5, "durasi_hujan": 30, "intensitas_hujan": 25.0}` |
-| `GET` | `/api/latest` | Ambil 1 data sensor paling baru | - |
+| `GET` | `/api/health` | Status uptime & deteksi database (`supabase` / `mysql`) | - |
+| `POST` | `/api/sensor` | Menerima data sensor dari ESP32 & kalkulasi fuzzy | `{"curah_hujan": 12.5, "durasi_hujan": 30, "intensitas_hujan": 25.0}` |
+| `GET` | `/api/latest` | Ambil 1 baris data sensor paling baru | - |
 | `GET` | `/api/history` | Ambil riwayat pembacaan sensor | `?limit=50` |
-| `GET` | `/api/summary` | Ambil ringkasan statistik & jumlah status | - |
+| `GET` | `/api/summary` | Ambil statistik data & jumlah per status | - |
 
 ---
 
 ## 🛡️ Best Practices & Keamanan
-- Koneksi database terenkripsi SSL untuk lingkungan serverless.
-- Manajemen pool koneksi serverless hemat resource (`connectionLimit: 2`).
-- Parameterized Query untuk proteksi menyeluruh terhadap SQL Injection.
-- Penggunaan edge CDN untuk penyajian aset statis tanpa beban komputasi server.
+- Kompatibilitas multi-database (PostgreSQL via Supabase SDK dan MySQL via Connection Pool).
+- Mengabaikan validasi sesi anonim berlebih untuk performa tinggi di Edge Function.
+- Proteksi terhadap SQL Injection dengan parameter terisolasi pada SDK.
+- Penggunaan Vercel Global Edge CDN untuk menyajikan web dashboard dengan kecepatan maksimal di mana saja.
