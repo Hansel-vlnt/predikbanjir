@@ -8,17 +8,15 @@
 const char* ssid = "NAMA_WIFI_ANDA";
 const char* password = "PASSWORD_WIFI_ANDA";
 
-// URL Endpoint Backend:
-// - Pengujian Lokal : "http://192.168.1.xxx:5000/api/sensor"
-// - Cloud Hosting   : "https://nama-aplikasi-anda.onrender.com/api/sensor" (mendukung HTTPS)
-const char* serverUrl = "http://192.168.1.100:5000/api/sensor";
+// URL Endpoint Backend Vercel Anda (Sudah Aktif & Terhubung ke Supabase):
+const char* serverUrl = "https://predikbanjir.vercel.app/api/sensor";
 
 // ============ MODE ============
-#define MODE_TESTING true  // true = 1 menit, false = 1 jam
+#define MODE_TESTING true  // true = 1 menit tanpa tip (reset), false = 1 jam (produksi)
 
 // ============ SENSOR ============
-const int pin_interrupt = 14;
-const float milimeter_per_tip = 0.70;
+const int pin_interrupt = 14;          // Pin GPIO sensor tipping bucket
+const float milimeter_per_tip = 0.70;  // Kalibrasi curah hujan per ayunan (mm)
 volatile long int jumlah_tip = 0;
 volatile boolean flag = false;
 
@@ -45,7 +43,7 @@ void IRAM_ATTR hitung_curah_hujan() {
     }
 }
 
-// ============ PROTOTIPE ============
+// ============ PROTOTIPE FUNGSI ============
 void kirimKeServer(long int tip);
 void kirimDataNol();
 void resetManual();
@@ -56,10 +54,10 @@ void setup() {
     delay(1000);
     
     #if MODE_TESTING
-        BATAS_BERHENTI = 60000;
+        BATAS_BERHENTI = 60000;    // 1 menit tanpa tip = hujan berhenti (Mode Uji Coba)
         Serial.println("MODE TESTING: 1 menit tanpa tip = reset");
     #else
-        BATAS_BERHENTI = 3600000;
+        BATAS_BERHENTI = 3600000;  // 1 jam tanpa tip = hujan berhenti (Mode Real)
         Serial.println("MODE PRODUKSI: 1 jam tanpa tip = reset");
     #endif
     
@@ -69,7 +67,7 @@ void setup() {
     
     pinMode(pin_interrupt, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(pin_interrupt), hitung_curah_hujan, FALLING);
-    Serial.println("Sensor tipping bucket siap");
+    Serial.println("Sensor tipping bucket siap pada GPIO 14");
     
     WiFi.begin(ssid, password);
     Serial.print("Menghubungkan ke WiFi: ");
@@ -90,6 +88,7 @@ void setup() {
     }
     
     Serial.println("========================================");
+    Serial.println("Server URL: " + String(serverUrl));
     Serial.println("Menunggu data sensor...");
     Serial.println("Kirim 'r' di Serial Monitor untuk reset manual");
     Serial.println("========================================");
@@ -112,7 +111,7 @@ void loop() {
         }
     }
     
-    // === DETEKSI HUJAN BERHENTI ===
+    // === DETEKSI HUJAN BERHENTI (OTOMATIS) ===
     if (sedang_hujan && (waktu - waktu_tip_terakhir > BATAS_BERHENTI)) {
         Serial.println("========================================");
         Serial.println("HUJAN BERHENTI! (Otomatis)");
@@ -134,7 +133,7 @@ void loop() {
         Serial.println("========================================");
     }
     
-    // === KIRIM DATA PERIODIK (selama hujan) ===
+    // === KIRIM DATA PERIODIK (SETIAP 30 DETIK SELAMA HUJAN) ===
     static unsigned long lastSend = 0;
     if (sedang_hujan && (waktu - lastSend > 30000)) {
         lastSend = waktu;
@@ -172,25 +171,27 @@ void resetManual() {
     }
 }
 
-// ============ KIRIM DATA NOL ============
+// ============ KIRIM DATA RESET (NOL) KE SERVER ============
 void kirimDataNol() {
-    Serial.println("MEMASUKI FUNGSI kirimDataNol()");
+    Serial.println("Mengirim status reset (0) ke server...");
     
     HTTPClient http;
     WiFiClientSecure secureClient;
     
     if (String(serverUrl).startsWith("https://")) {
-        secureClient.setInsecure(); // Mengabaikan verifikasi CA SSL untuk IoT
+        secureClient.setInsecure(); // Mengabaikan validasi CA SSL untuk IoT
         http.begin(secureClient, serverUrl);
     } else {
         http.begin(serverUrl);
     }
     
     http.addHeader("Content-Type", "application/json");
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setTimeout(10000);
     
     String payload = "{\"curah_hujan\":0,\"durasi_hujan\":0,\"intensitas_hujan\":0}";
     
-    Serial.print("Kirim (RESET): ");
+    Serial.print("Payload (RESET): ");
     Serial.println(payload);
     
     int httpCode = http.POST(payload);
@@ -208,19 +209,21 @@ void kirimDataNol() {
     http.end();
 }
 
-// ============ KIRIM KE SERVER (RUMUS MURNI, TANPA BATASAN) ============
+// ============ KIRIM DATA SENSOR KE SERVER ============
 void kirimKeServer(long int tip) {
     HTTPClient http;
     WiFiClientSecure secureClient;
     
     if (String(serverUrl).startsWith("https://")) {
-        secureClient.setInsecure();
+        secureClient.setInsecure(); // Mengabaikan validasi CA SSL untuk IoT
         http.begin(secureClient, serverUrl);
     } else {
         http.begin(serverUrl);
     }
     
     http.addHeader("Content-Type", "application/json");
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setTimeout(10000);
     
     // ============================================
     // RUMUS: Curah = tip × 0.70 mm
@@ -243,18 +246,18 @@ void kirimKeServer(long int tip) {
     payload += "\"intensitas_hujan\":" + String(intensitas, 2);
     payload += "}";
     
-    Serial.print("Kirim: ");
+    Serial.print("Kirim ke Cloud: ");
     Serial.println(payload);
     
     int httpCode = http.POST(payload);
     
     if (httpCode == 200 || httpCode == 201) {
         String response = http.getString();
-        Serial.println("Data terkirim!");
-        Serial.print("Response: ");
+        Serial.println("Data berhasil disimpan ke cloud Vercel & Supabase!");
+        Serial.print("Server Response: ");
         Serial.println(response);
     } else {
-        Serial.print("Gagal, HTTP: ");
+        Serial.print("Gagal kirim, HTTP Code: ");
         Serial.println(httpCode);
         if (httpCode == -1) {
             Serial.println("   → Periksa koneksi WiFi dan URL server!");
