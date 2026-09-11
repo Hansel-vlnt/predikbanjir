@@ -22,13 +22,16 @@ exports.receiveData = async (req, res) => {
         const hasilFuzzy = inferensiFuzzy(curah, durasi, intensitas);
         let insertedId = null;
 
+        // Bulatkan durasi ke integer untuk penyimpanan database (kompatibel kolom INT PostgreSQL & MySQL)
+        const durasiSimpan = Math.round(durasi);
+
         // MODE 1: SUPABASE (POSTGRESQL CLOUD)
         if (isSupabaseConfigured()) {
             const { data, error } = await supabase
                 .from('tb_sensor')
                 .insert([{
                     curah_hujan: curah,
-                    durasi_hujan: durasi,
+                    durasi_hujan: durasiSimpan,
                     intensitas_hujan: intensitas,
                     potensi_banjir: hasilFuzzy.nilai,
                     status_banjir: hasilFuzzy.status
@@ -48,7 +51,7 @@ exports.receiveData = async (req, res) => {
                 if (fz) {
                     await supabase.from('tb_fuzzy_log').insert([{
                         curah_hujan: curah,
-                        durasi_hujan: durasi,
+                        durasi_hujan: durasiSimpan,
                         intensitas_hujan: intensitas,
                         derajat_rendah: fz.curah.rendah,
                         derajat_sedang: fz.curah.sedang,
