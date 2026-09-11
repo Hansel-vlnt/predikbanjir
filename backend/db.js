@@ -2,6 +2,8 @@ const mysql = require('mysql2');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const isVercel = !!process.env.VERCEL;
+
 const config = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 3306,
@@ -9,14 +11,15 @@ const config = {
     password: process.env.DB_PASSWORD || process.env.DB_PASS || '',
     database: process.env.DB_NAME || 'banjir_prediksi',
     waitForConnections: true,
-    connectionLimit: 10,
+    // Di serverless Vercel, batasi connectionLimit agar tidak menghabiskan pool database cloud
+    connectionLimit: isVercel ? 2 : 10,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000
 };
 
-// Aktifkan SSL jika environment DB_SSL diset ke 'true' (standar untuk cloud MySQL seperti Aiven / TiDB)
-if (process.env.DB_SSL === 'true') {
+// Aktifkan SSL jika DB_SSL=true ATAU jika berjalan di Vercel (karena Vercel selalu terkoneksi ke remote cloud MySQL)
+if (process.env.DB_SSL === 'true' || (isVercel && config.host !== 'localhost' && config.host !== '127.0.0.1')) {
     config.ssl = { rejectUnauthorized: false };
 }
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const apiRoutes = require('./routes/api');
@@ -15,16 +16,23 @@ app.use(express.urlencoded({ extended: true }));
 // Routing API
 app.use('/api', apiRoutes);
 
-// Sajikan Frontend Dashboard secara langsung dari backend
-const frontendPath = path.join(__dirname, '../frontend');
-app.use(express.static(frontendPath));
+// Deteksi folder statis: prioritaskan 'public' (standar Vercel CDN), fallback ke 'frontend'
+const publicDir = path.join(__dirname, '../public');
+const frontendDir = path.join(__dirname, '../frontend');
+const staticPath = fs.existsSync(publicDir) ? publicDir : frontendDir;
+
+app.use(express.static(staticPath));
 
 // Fallback untuk SPA / Web Dashboard (selain route /api)
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
         return next();
     }
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    const indexPath = path.join(staticPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+    }
+    next();
 });
 
 // Jalankan server jika dieksekusi langsung
