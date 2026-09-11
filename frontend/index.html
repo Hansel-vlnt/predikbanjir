@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Flood Prediction System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <h1>SISTEM PREDIKSI POTENSI BANJIR</h1>
+            </div>
+            <div class="subtitle">Internet of Things & Fuzzy Logic</div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main>
+            <!-- Status Card Utama -->
+            <div class="status-card" id="statusCard">
+                <div class="status-indicator">
+                    <div class="status-icon" id="statusIcon">🟢</div>
+                    <div class="status-text" id="statusText">AMAN</div>
+                </div>
+                <div class="score-container">
+                    <div class="score-label">Skor Potensi Banjir</div>
+                    <div class="score-value" id="scoreValue">0</div>
+                    <div class="score-max">/ 100</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="timestamp" id="timestamp">-</div>
+            </div>
+
+            <!-- 3 Sensor Cards -->
+            <div class="sensors-grid">
+                <div class="sensor-card">
+                    <div class="sensor-label">Curah Hujan</div>
+                    <div class="sensor-value" id="curahValue">0</div>
+                    <div class="sensor-unit">mm</div>
+                    <div class="sensor-category" id="curahCategory">-</div>
+                </div>
+                <div class="sensor-card">
+                    <div class="sensor-label">Durasi Hujan</div>
+                    <div class="sensor-value" id="durasiValue">0</div>
+                    <div class="sensor-unit">menit</div>
+                    <div class="sensor-category" id="durasiCategory">-</div>
+                </div>
+                <div class="sensor-card">
+                    <div class="sensor-label">Intensitas Hujan</div>
+                    <div class="sensor-value" id="intensitasValue">0</div>
+                    <div class="sensor-unit">mm/jam</div>
+                    <div class="sensor-category" id="intensitasCategory">-</div>
+                </div>
+            </div>
+
+            <!-- Statistik Ringkasan -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalData">0</div>
+                    <div class="stat-label">Total Data</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="rataSkor">0</div>
+                    <div class="stat-label">Rata-rata Skor</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statusAman">0</div>
+                    <div class="stat-label">Status AMAN</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statusBahaya">0</div>
+                    <div class="stat-label">Status BAHAYA</div>
+                </div>
+            </div>
+
+            <!-- Grafik -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Trend Potensi Banjir (24 Jam Terakhir)</h3>
+                    <button class="btn-chart" onclick="refreshChart()">🔄 Refresh</button>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Rekap Harian -->
+            <div class="rekap-container">
+                <h3 style="text-align: center;">REKAP HARIAN</h3>
+                <div class="table-wrapper">
+                    <table id="rekapTable">
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Total Curah</th>
+                                <th>Jumlah Data</th>
+                                <th>Skor Tertinggi</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rekapBody">
+                            <tr><td colspan="5" class="loading">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Riwayat Data -->
+            <div class="history-container">
+                <h3 style="text-align: center;">RIWAYAT DATA SENSOR</h3>
+                <div class="table-wrapper">
+                    <table id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Curah Hujan</th>
+                                <th>Durasi</th>
+                                <th>Intensitas</th>
+                                <th>Skor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr><td colspan="6" class="loading">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2026 - Sistem Prediksi Banjir Dengan Curah Hujan</p>
+        </footer>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "name": "prediksi-potensi-banjir-iot",
+  "version": "1.0.0",
+  "description": "Sistem Monitoring & Prediksi Potensi Banjir Berbasis IoT (ESP32), Logika Fuzzy, dan Web Dashboard",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "install:backend": "cd backend && npm install"
+  },
+  "keywords": [
+    "iot",
+    "esp32",
+    "fuzzy-logic",
+    "flood-prediction",
+    "express",
+    "mysql",
+    "dashboard"
+  ],
+  "author": "Hansel-vlnt",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.3.1",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.22.2"
+  }
+}
