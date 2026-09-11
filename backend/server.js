@@ -13,8 +13,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routing API
+// Routing API: dukung baik dengan prefix /api maupun root / (kompatibilitas penuh Vercel Serverless rewrite)
 app.use('/api', apiRoutes);
+app.use('/', apiRoutes);
 
 // Deteksi folder statis: prioritaskan 'public' (standar Vercel CDN), fallback ke 'frontend'
 const publicDir = path.join(__dirname, '../public');
@@ -25,7 +26,7 @@ app.use(express.static(staticPath));
 
 // Fallback untuk SPA / Web Dashboard (selain route /api)
 app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/sensor') || req.path.startsWith('/latest') || req.path.startsWith('/history') || req.path.startsWith('/summary')) {
         return next();
     }
     const indexPath = path.join(staticPath, 'index.html');

@@ -185,13 +185,18 @@ async function updateStats() {
 // UPDATE HISTORY
 // ============================================
 async function updateHistory() {
+    const tbody = document.getElementById('historyBody');
     try {
         const response = await fetch(`${API_URL}/history?limit=20`);
         const data = await response.json();
         
-        const tbody = document.getElementById('historyBody');
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="loading">Belum ada data</td></tr>';
+        if (data && data.error) {
+            tbody.innerHTML = `<tr><td colspan="6" class="loading" style="color: #e74c3c;">⚠️ Database belum terhubung: ${data.error}<br><small>Pastikan SUPABASE_URL & SUPABASE_KEY sudah diisi di Vercel Settings > Environment Variables</small></td></tr>`;
+            return;
+        }
+        
+        if (!Array.isArray(data) || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="loading">Belum ada data sensor tercatat</td></tr>';
             return;
         }
         
@@ -229,8 +234,10 @@ async function updateHistory() {
         updateChart(chartData.reverse());
     } catch (error) {
         console.error('Error fetching history:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="loading" style="color: #e74c3c;">Gagal menghubungi server API</td></tr>';
     }
 }
+
 
 // ============================================
 // UPDATE CHART (HANYA SATU VERSION)
@@ -346,13 +353,18 @@ function updateChart(data) {
 // UPDATE REKAP HARIAN
 // ============================================
 async function updateRekapHarian() {
+    const tbody = document.getElementById('rekapBody');
     try {
         const response = await fetch(`${API_URL}/history?limit=1000`);
         const data = await response.json();
         
-        if (!data || data.length === 0) {
-            document.getElementById('rekapBody').innerHTML = 
-                '<tr><td colspan="5" class="loading">Belum ada data</td></tr>';
+        if (data && data.error) {
+            tbody.innerHTML = `<tr><td colspan="5" class="loading" style="color: #e74c3c;">⚠️ Database belum terhubung: ${data.error}</td></tr>`;
+            return;
+        }
+        
+        if (!Array.isArray(data) || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">Belum ada data</td></tr>';
             return;
         }
         
@@ -360,8 +372,7 @@ async function updateRekapHarian() {
         const filteredData = data.filter(row => row.curah_hujan > 0);
         
         if (filteredData.length === 0) {
-            document.getElementById('rekapBody').innerHTML = 
-                '<tr><td colspan="5" class="loading">Belum ada data hujan</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">Belum ada data hujan</td></tr>';
             return;
         }
         
@@ -384,7 +395,6 @@ async function updateRekapHarian() {
             }
         });
         
-        const tbody = document.getElementById('rekapBody');
         const sortedDates = Object.keys(rekap).sort((a, b) => {
             const dateA = new Date(a.split('/').reverse().join('-'));
             const dateB = new Date(b.split('/').reverse().join('-'));
@@ -411,6 +421,7 @@ async function updateRekapHarian() {
         
     } catch (error) {
         console.error('Error fetching rekap:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color: #e74c3c;">Gagal memuat rekap harian</td></tr>';
     }
 }
 
